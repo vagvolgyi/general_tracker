@@ -4,7 +4,7 @@
 Command line arguments:
 -----------------------
 
-    tracker_all <video-file> <output-file>
+    track <video-file> <output-file>
 
 
 Example:
