@@ -4,10 +4,10 @@
 Command line arguments:
 -----------------------
 
-    tracker_all <video-file> <output-file>
+    track <video-file> <output-file> <match-threshold>
 
 
 Example:
 -------------------------------------------------
 
-    track video.mp4 results.csv
+    track video.mp4 results.csv 0.7
