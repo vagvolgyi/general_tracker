@@ -66,16 +66,21 @@ int main(int argc, char **argv)
 
     while (video.read(frame))
     {
-        cv::resize(frame, frame_small, cv::Size(frame.cols / 2, frame.rows / 2));
+        cv::resize(frame, frame_small, cv::Size(frame.cols / 2, frame.rows / 2), 0, 0, cv::INTER_NEAREST);
 
         if (tracker_ok) {
             if (tracker->update(frame, roi)) {
                 // Check quality of the match
-                cv::resize(cv::Mat(frame, roi), patch_scaled, tmplt.size(), cv::INTER_LINEAR);
+                cv::resize(cv::Mat(frame, roi), patch_scaled, tmplt.size(), 0, 0, cv::INTER_LINEAR);
                 float match = CompareToTemplate(patch_scaled, tmplt);
+
+                std::stringstream ss;
+                ss << std::fixed << std::setprecision(3) << match;
 
                 if (match >= match_threshold) {
                     // Good match
+                    cv::putText(frame_small, ss.str(), cv::Point(3, 23), cv::FONT_HERSHEY_SIMPLEX, 0.4, cv::Scalar(0, 255, 0), 1);
+
                     output << frame_cnt << ",1,"
                            << static_cast<double>(roi.x) + static_cast<double>(roi.width) * 0.5
                            << ","
@@ -90,6 +95,8 @@ int main(int argc, char **argv)
                     prev_action_skip = false;
                 } else {
                     // Bad match
+                    cv::putText(frame_small, ss.str(), cv::Point(3, 23), cv::FONT_HERSHEY_SIMPLEX, 0.4, cv::Scalar(0, 0, 255), 1);
+
                     tracker_ok = false;
                 }
             } else {
@@ -101,7 +108,7 @@ int main(int argc, char **argv)
 
         std::stringstream ss;
         ss << frame_cnt;
-        cv::putText(frame_small, ss.str(), cv::Point(3, 11), cv::FONT_HERSHEY_SIMPLEX, 0.4, cv::Scalar(255,255,255), 1);
+        cv::putText(frame_small, ss.str(), cv::Point(3, 11), cv::FONT_HERSHEY_SIMPLEX, 0.4, cv::Scalar(255, 255, 255), 1);
         cv::imshow("Tracking", frame_small);
 
         if (!tracker_ok) {
