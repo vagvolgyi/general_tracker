@@ -1,5 +1,5 @@
 # General Tracker
-# by Balazs Vagvolgyi
+by Balazs Vagvolgyi
 
 Simple utility for tracking a single object.
 User needs to manually select the ROI of the patch to be tracked.
