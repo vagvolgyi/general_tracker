@@ -24,7 +24,14 @@ int main(int argc, char **argv)
 
     std::string video_file = argv[1];
     std::string output_file = argv[2];
-    float match_threshold = std::stof(argv[3]);
+
+    std::stringstream ss(argv[3]);
+    float match_threshold;
+    ss >> match_threshold;
+
+    std::cout << ". video-file      = \"" << video_file << "\"" << std::endl
+              << ". output-file     = \"" << output_file << "\"" << std::endl
+              << ". match-threshold = " << std::fixed << match_threshold << std::endl;
 
 //    cv::Ptr<cv::Tracker> tracker = cv::TrackerKCF::create();
 //    cv::Ptr<cv::Tracker> tracker = cv::TrackerMIL::create();
@@ -79,8 +86,12 @@ int main(int argc, char **argv)
 
     std::cout << ". Press ESC to exit" << std::endl;
 
+    int frame_cnt = 1;
+
     while (video.read(frame))
     {
+        frame_cnt ++;
+
         cv::resize(frame, frame_small, cv::Size(frame.cols / 2, frame.rows / 2));
 
         if (tracker_ok) {
@@ -114,6 +125,9 @@ int main(int argc, char **argv)
             }
         }
 
+        std::stringstream ss;
+        ss << frame_cnt;
+        cv::putText(frame_small, ss.str(), cv::Point(3, 11), cv::FONT_HERSHEY_SIMPLEX, 0.4, cv::Scalar(255,255,255), 1);
         cv::imshow("Tracking", frame_small);
 
         if (!tracker_ok) {
@@ -140,6 +154,8 @@ int main(int argc, char **argv)
                        << ","
                        << static_cast<double>(roi.y) + static_cast<double>(roi.height) * 0.5 << std::endl;
 
+                tracker.release();
+                tracker = cv::TrackerCSRT::create();
                 tracker->init(frame, roi);
 
                 tracker_ok = true;
