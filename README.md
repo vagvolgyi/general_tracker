@@ -15,6 +15,9 @@ Follow instructions in the terminal.
 
 Keyboard inputs are active when the image window is in focus.
 
+Requires OpenCV 3.4.1+.
+
+
 Command line arguments:
 -----------------------
 

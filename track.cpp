@@ -50,7 +50,7 @@ int main(int argc, char **argv)
         return -1;
     }
 
-    std::ofstream output(output_file, std::ofstream::out);
+    std::ofstream output(output_file.c_str(), std::ofstream::out);
     if (output.is_open() == false) {
         std::cerr << ". Error - could not create output file" << std::endl;
         return -2;
