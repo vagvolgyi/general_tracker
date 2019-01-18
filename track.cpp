@@ -69,7 +69,12 @@ int main(int argc, char **argv)
         cv::resize(frame, frame_small, cv::Size(frame.cols / 2, frame.rows / 2), 0, 0, cv::INTER_NEAREST);
 
         if (tracker_ok) {
-            if (tracker->update(frame, roi)) {
+            if (tracker->update(frame, roi) &&
+                roi.x >= 0 &&
+                roi.y >= 0 &&
+                roi.x + roi.width <= frame.cols &&
+                roi.y + roi.height <= frame.rows) {
+
                 // Check quality of the match
                 cv::resize(cv::Mat(frame, roi), patch_scaled, tmplt.size(), 0, 0, cv::INTER_LINEAR);
                 float match = CompareToTemplate(patch_scaled, tmplt);
