@@ -29,3 +29,12 @@ Example:
 -------------------------------------------------
 
     track video.mp4 results.csv 0.7
+
+Compilation:
+-----------------------
+
+    cd <general_tracker_src>
+    mkdir build
+    cd build
+    cmake ../ -DCMAKE_BUILD_TYPE=Release
+    make
