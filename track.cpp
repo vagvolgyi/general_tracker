@@ -35,7 +35,7 @@ int main(int argc, char **argv)
 
 //    cv::Ptr<cv::Tracker> tracker = cv::TrackerKCF::create();
 //    cv::Ptr<cv::Tracker> tracker = cv::TrackerMIL::create();
-    cv::Ptr<cv::Tracker> tracker = cv::TrackerCSRT::create();
+    cv::Ptr<cv::Tracker> tracker;// = cv::TrackerCSRT::create();
 
     cv::VideoCapture video(video_file);
 
@@ -56,42 +56,16 @@ int main(int argc, char **argv)
         return -2;
     }
 
-    cv::Mat frame_small;
-    cv::resize(frame, frame_small, cv::Size(frame.cols / 2, frame.rows / 2));
+    cv::Rect2d roi;
+    cv::Mat frame_small, tmplt, patch_scaled;
+    bool tracker_ok = false, prev_action_skip = true;
 
-    cv::Rect2d roi = cv::selectROI("Tracking", frame_small, true, true);
+    std::cout << ". Press SPACE to select, ESC to exit, or any other key to fast-forward." << std::endl;
 
-    cv::resize(frame, frame_small, cv::Size(frame.cols / 2, frame.rows / 2));
-    cv::rectangle(frame, roi, cv::Scalar(0, 255, 0), 2, 1);
-    cv::imshow("Tracking", frame_small);
-
-    roi.x *= 2;
-    roi.y *= 2;
-    roi.width *= 2;
-    roi.height *= 2;
-
-    cv::Mat tmplt;
-    cv::Mat(frame, roi).copyTo(tmplt);
-
-    cv::Mat patch_scaled;
-
-    output << "1,"
-           << static_cast<double>(roi.x) + static_cast<double>(roi.width) * 0.5
-           << ","
-           << static_cast<double>(roi.y) + static_cast<double>(roi.height) * 0.5 << std::endl;
-
-    tracker->init(frame, roi);
-
-    bool tracker_ok = true, prev_action_skip = false;
-
-    std::cout << ". Press ESC to exit" << std::endl;
-
-    int frame_cnt = 1;
+    int frame_cnt = 0;
 
     while (video.read(frame))
     {
-        frame_cnt ++;
-
         cv::resize(frame, frame_small, cv::Size(frame.cols / 2, frame.rows / 2));
 
         if (tracker_ok) {
@@ -102,7 +76,7 @@ int main(int argc, char **argv)
 
                 if (match >= match_threshold) {
                     // Good match
-                    output << "1,"
+                    output << frame_cnt << ",1,"
                            << static_cast<double>(roi.x) + static_cast<double>(roi.width) * 0.5
                            << ","
                            << static_cast<double>(roi.y) + static_cast<double>(roi.height) * 0.5 << std::endl;
@@ -121,7 +95,7 @@ int main(int argc, char **argv)
             } else {
                 // Tracker failed
                 tracker_ok = false;
-                output << "0,0,0" << std::endl;
+                output << frame_cnt << ",0,0,0" << std::endl;
             }
         }
 
@@ -132,7 +106,7 @@ int main(int argc, char **argv)
 
         if (!tracker_ok) {
             if (!prev_action_skip) {
-                std::cerr << ". Tracking failed, press SPACE to re-select, ESC to exit, or any other key to fast-forward." << std::endl;
+                std::cout << ". Tracking failed, press SPACE to re-select, ESC to exit, or any other key to fast-forward." << std::endl;
             }
             int k = cv::waitKey(0);
             if (k == 27) {
@@ -149,7 +123,7 @@ int main(int argc, char **argv)
 
                 cv::Mat(frame, roi).copyTo(tmplt);
 
-                output << "1,"
+                output << frame_cnt << ",1,"
                        << static_cast<double>(roi.x) + static_cast<double>(roi.width) * 0.5
                        << ","
                        << static_cast<double>(roi.y) + static_cast<double>(roi.height) * 0.5 << std::endl;
@@ -164,9 +138,11 @@ int main(int argc, char **argv)
                 std::cout << ". Press ESC to exit" << std::endl;
             } else {
                 // Skip frame
-                output << "0,0,0" << std::endl;
+                output << frame_cnt << ",0,0,0" << std::endl;
                 prev_action_skip = true;
             }
+
+            frame_cnt ++;
             continue;
         }
 
@@ -175,6 +151,8 @@ int main(int argc, char **argv)
             // Exit on ESC
             break;
         }
+
+        frame_cnt ++;
     }
 
     std::cout << ". Finished" << std::endl;
