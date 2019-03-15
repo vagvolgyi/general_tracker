@@ -135,7 +135,7 @@ int main(int argc, char **argv)
 
                 cv::Mat(frame, roi).copyTo(tmplt);
 
-                output << frame_cnt << ",1,"
+                output << frame_cnt << ",2,"
                        << static_cast<double>(roi.x) + static_cast<double>(roi.width) * 0.5
                        << ","
                        << static_cast<double>(roi.y) + static_cast<double>(roi.height) * 0.5 << std::endl;
