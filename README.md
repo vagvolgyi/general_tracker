@@ -29,3 +29,18 @@ Example:
 -------------------------------------------------
 
     track video.mp4 results.csv 0.7
+
+Compilation on Linux and Mac:
+-----------------------
+
+    cd <general_tracker_src>
+    mkdir build
+    cd build
+    cmake ../ -DCMAKE_BUILD_TYPE=Release
+    make
+
+Compilation on Windows (with OpenCV installation):
+-----------------------
+
+Run-time dependencies on Windows:
+-----------------------
