@@ -9,7 +9,12 @@ Frames may be skipped when the object is lost by the tracker or is not visible.
 
 Output is generated in CSV format:
 
-    <frame-num>,<valid-flag>,<x-coordinate>,<y-coordinate>
+    <frame-num>,<status>,<x-coordinate>,<y-coordinate>
+
+    # <status> values:
+    #     0 - not tracking
+    #     1 - tracking automatically
+    #     2 - template manually selected
 
 Follow instructions in the terminal.
 
