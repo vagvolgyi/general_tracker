@@ -52,7 +52,7 @@ Download opencv_contrib (4.0.1) form the following link: https://github.com/open
 
 Load and configure OpenCV project in CMake, as follows:
 
-- In the fields "Where is the source code" and "where to build the binaries", specify the path to the source folder and build folders for the OpenCV package, repectively;
+- In the fields "Where is the source code" and "where to build the binaries", specify the path to the source folder and build folder for the OpenCV package, repectively; These will look like *\opencv-4.0.1\sources and *\opencv-4.0.1\build, where * indicates the folder path containing opencv-4.0.1.
 
 - Click on "Add Entry"; 
 
@@ -62,7 +62,7 @@ Load and configure OpenCV project in CMake, as follows:
 
 - Leave the Value unassigned for now and press OK. Then "Configure" and "Generate";
 
-- After successful configuration, set the PATH value. For this purpose, in the red section, click on OpenCV_DIR to modify its value by entering the the directory containing the CMake configuration file for OpenCV (the path to *\opencv_contrib-4.0.1\modules, where * indicates the path where opencv_contrib-4.0.1 is located);
+- After successful configuration, set the PATH value. For this purpose, in the red section, click on OpenCV_DIR to modify its value by entering the the directory containing the CMake configuration file for OpenCV (the path to *\opencv_contrib-4.0.1\modules, where * indicates the folder path containing opencv_contrib-4.0.1);
 
 - "Configure" and "Generate" another time.
 
