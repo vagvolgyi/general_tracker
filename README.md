@@ -46,6 +46,33 @@ Compilation on Linux and Mac:
 
 Compilation on Windows (with OpenCV installation):
 -----------------------
+Download and install OpenCV (4.0.1) for Windows (please see the following link for further instructions: https://docs.opencv.org/3.4.3/d3/d52/tutorial_windows_install.html)
+
+Download opencv_contrib (4.0.1) form the following link: https://github.com/opencv/opencv_contrib/releases 
+
+Load and configure OpenCV project in CMake, as follows:
+
+- In the fields "Where is the source code" and "where to build the binaries", specify the path to the source folder and build folders for the OpenCV package, repectively;
+
+- Click on "Add Entry"; 
+
+- Enter "OpenCV_DIR" for the Name;
+
+- From the Type dropdown, set Type to be PATH;
+
+- Leave the Value unassigned for now and press OK. Then "Configure" and "Generate";
+
+- After successful configuration, set the PATH value. For this purpose, in the red section, click on OpenCV_DIR to modify its value by entering the the directory containing the CMake configuration file for OpenCV (the path to *\opencv_contrib-4.0.1\modules, where * indicates the path where opencv_contrib-4.0.1 is located);
+
+- "Configure" and "Generate" another time.
+
+
+After generating the CMAke file, open the project in Visual Studio and Build it.
+
+Before running the code, you will need to either copy all the DLL files to the folder containing the .exe file, or add the location of the DLL files to environment PATHs.
+
+
+
 
 Run-time dependencies on Windows:
 -----------------------
