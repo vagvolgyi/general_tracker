@@ -82,9 +82,11 @@ Compilation on Windows (with OpenCV installation):
    
    4. "Configure", then "Generate".
 
-7. (Optional) Select Release mode in the Debug/Release drop down list.
+7. Open the general_tracker Visual Studio Solution.
 
-8. Open the general_tracker Visual Studio Solution and build it.
+8. (Optional) Select Release mode in the Debug/Release drop down list.
+
+9. Build the solution.
 
 Run-time dependencies on Windows:
 -----------------------
