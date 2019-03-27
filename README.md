@@ -56,23 +56,20 @@ Load and configure OpenCV project in CMake, as follows:
 
 - Click on "Add Entry"; 
 
-- Enter "OpenCV_DIR" for the Name;
+- Enter "OPENCV_EXTRA_MODULES_PATH" for the Name;
 
 - From the Type dropdown, set Type to be PATH;
 
-- Leave the Value unassigned for now and press OK. Then "Configure" and "Generate";
+- Leave the Value unassigned for now and press "OK" then "Configure";
 
-- After successful configuration, set the PATH value. For this purpose, in the red section, click on OpenCV_DIR to modify its value by entering the the directory containing the CMake configuration file for OpenCV (the path to *\opencv_contrib-4.0.1\modules, where * indicates the folder path containing opencv_contrib-4.0.1);
+- After successful configuration, set the PATH value. For this purpose, in the red section, click on OPENCV_EXTRA_MODULES_PATH to modify its value then select the directory containing the OpenCV Contrib modules (*\opencv_contrib-4.0.1\modules, where * indicates the folder path containing opencv_contrib-4.0.1);
 
-- "Configure" and "Generate" another time.
-
-
-After generating the CMAke file, open the project in Visual Studio and Build it.
-
-Before running the code, you will need to either copy all the DLL files to the folder containing the .exe file, or add the location of the DLL files to environment PATHs.
+- "Configure" again, then "Generate".
 
 
-
+After generating, open the OpenCV Visual Studio Solution and compile it (Build All).
 
 Run-time dependencies on Windows:
 -----------------------
+
+Before running the code, you will need to either copy all the OpenCV DLL files to the folder containing the track.exe file, or add the location of the DLL files to "PATH" environment variable.
