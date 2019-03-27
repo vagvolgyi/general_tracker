@@ -52,21 +52,37 @@ Compilation on Windows (with OpenCV installation):
 
 3. Generate a Visual Studio solution for OpenCV using CMake, as follows:
 
-   1. In CMake, in the fields "Where is the source code" and "where to build the binaries", specify the path to the source folder and build folder for the OpenCV package, repectively; These will look like *\opencv-4.0.1\sources and *\opencv-4.0.1\build, where * indicates the folder path containing opencv-4.0.1.
+   1. In CMake, in the fields "Where is the source code" and "Where to build the binaries", specify the path to the source folder and build folder for the OpenCV package, repectively. These will look like *\opencv-4.0.1\sources and *\opencv-4.0.1\build, where * indicates the folder path containing opencv-4.0.1.
 
-   2. Click on "Add Entry"; 
+   2. Click on "Add Entry".
    
-   3. Enter "OPENCV_EXTRA_MODULES_PATH" for the Name;
+   3. Enter "OPENCV_EXTRA_MODULES_PATH" for the Name.
    
-   4. From the Type dropdown, set Type to be PATH;
+   4. Select PATH for Type.
    
-   5. Leave the Value unassigned for now and press "OK" then "Configure";
+   5. Leave the Value unassigned for now and press "OK" then "Configure".
    
-   6. After successful configuration, set the PATH value. For this purpose, in the red section, click on OPENCV_EXTRA_MODULES_PATH to modify its value then select the directory containing the OpenCV Contrib modules (*\opencv_contrib-4.0.1\modules, where * indicates the folder path containing opencv_contrib-4.0.1);
+   6. After successful configuration, set the PATH value. For this purpose, in the red section, click on OPENCV_EXTRA_MODULES_PATH to modify its value then select the directory containing the OpenCV Contrib modules (*\opencv_contrib-4.0.1\modules, where * indicates the folder path containing opencv_contrib-4.0.1).
    
    7. "Configure" again, then "Generate".
 
 4. Open the OpenCV Visual Studio Solution and compile it (Build All).
+
+5. Create a build directory for general_tracker.
+
+6. Generate a Visual Studio solution for general_tracker using CMake, as follows:
+
+   1. Set source and build directories.
+   
+   2. "Configure".
+   
+   3. Set "OpenCV_DIR" to the build directory of your OpenCV installation.
+   
+   4. "Configure", then "Generate".
+
+7. (Optional) Select Release mode in the Debug/Release drop down list.
+
+8. Open the general_tracker Visual Studio Solution and build it.
 
 Run-time dependencies on Windows:
 -----------------------
