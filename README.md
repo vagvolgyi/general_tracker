@@ -54,17 +54,19 @@ Compilation on Windows (with OpenCV installation):
 
    1. In CMake, in the fields "Where is the source code" and "Where to build the binaries", specify the path to the source folder and build folder for the OpenCV package, repectively. These will look like *\opencv-4.0.1\sources and *\opencv-4.0.1\build, where * indicates the folder path containing opencv-4.0.1.
 
-   2. Click on "Add Entry".
-   
-   3. Enter "OPENCV_EXTRA_MODULES_PATH" for the Name.
-   
-   4. Select PATH for Type.
-   
-   5. Leave the Value unassigned for now and press "OK" then "Configure".
-   
-   6. After successful configuration, set the PATH value. For this purpose, in the red section, click on OPENCV_EXTRA_MODULES_PATH to modify its value then select the directory containing the OpenCV Contrib modules (*\opencv_contrib-4.0.1\modules, where * indicates the folder path containing opencv_contrib-4.0.1).
-   
-   7. "Configure" again, then "Generate".
+   2. Click "Configure". If asked, select the 64-bit version of your Visual Studio.
+
+   3. Click "Add Entry".
+
+   4. Enter "OPENCV_EXTRA_MODULES_PATH" for the Name.
+
+   5. Select PATH for Type.
+
+   6. Leave the Value unassigned for now and press "OK" then "Configure".
+
+   7. After successful configuration, set the PATH value. For this purpose, in the red section, click on OPENCV_EXTRA_MODULES_PATH to modify its value then select the directory containing the OpenCV Contrib modules (*\opencv_contrib-4.0.1\modules, where * indicates the folder path containing opencv_contrib-4.0.1).
+
+   8. "Configure" again, then "Generate".
 
 4. Open the OpenCV Visual Studio Solution and compile it (Build All).
 
