@@ -46,28 +46,27 @@ Compilation on Linux and Mac:
 
 Compilation on Windows (with OpenCV installation):
 -----------------------
-Download and install OpenCV (4.0.1) for Windows (please see the following link for further instructions: https://docs.opencv.org/3.4.3/d3/d52/tutorial_windows_install.html)
+1. Download and install OpenCV (4.0.1) for Windows by following these instructions: https://docs.opencv.org/3.4.3/d3/d52/tutorial_windows_install.html
 
-Download opencv_contrib (4.0.1) form the following link: https://github.com/opencv/opencv_contrib/releases 
+2. Download opencv_contrib (4.0.1): https://github.com/opencv/opencv_contrib/releases 
 
-Load and configure OpenCV project in CMake, as follows:
+3. Generate a Visual Studio solution for OpenCV using CMake, as follows:
 
-- In the fields "Where is the source code" and "where to build the binaries", specify the path to the source folder and build folder for the OpenCV package, repectively; These will look like *\opencv-4.0.1\sources and *\opencv-4.0.1\build, where * indicates the folder path containing opencv-4.0.1.
+   1. In CMake, in the fields "Where is the source code" and "where to build the binaries", specify the path to the source folder and build folder for the OpenCV package, repectively; These will look like *\opencv-4.0.1\sources and *\opencv-4.0.1\build, where * indicates the folder path containing opencv-4.0.1.
 
-- Click on "Add Entry"; 
+   2. Click on "Add Entry"; 
+   
+   3. Enter "OPENCV_EXTRA_MODULES_PATH" for the Name;
+   
+   4. From the Type dropdown, set Type to be PATH;
+   
+   5. Leave the Value unassigned for now and press "OK" then "Configure";
+   
+   6. After successful configuration, set the PATH value. For this purpose, in the red section, click on OPENCV_EXTRA_MODULES_PATH to modify its value then select the directory containing the OpenCV Contrib modules (*\opencv_contrib-4.0.1\modules, where * indicates the folder path containing opencv_contrib-4.0.1);
+   
+   7. "Configure" again, then "Generate".
 
-- Enter "OPENCV_EXTRA_MODULES_PATH" for the Name;
-
-- From the Type dropdown, set Type to be PATH;
-
-- Leave the Value unassigned for now and press "OK" then "Configure";
-
-- After successful configuration, set the PATH value. For this purpose, in the red section, click on OPENCV_EXTRA_MODULES_PATH to modify its value then select the directory containing the OpenCV Contrib modules (*\opencv_contrib-4.0.1\modules, where * indicates the folder path containing opencv_contrib-4.0.1);
-
-- "Configure" again, then "Generate".
-
-
-After generating, open the OpenCV Visual Studio Solution and compile it (Build All).
+4. Open the OpenCV Visual Studio Solution and compile it (Build All).
 
 Run-time dependencies on Windows:
 -----------------------
