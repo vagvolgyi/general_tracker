@@ -16,22 +16,27 @@ float CompareToTemplate(const cv::Mat& patch, const cv::Mat& tmplt)
 
 int main(int argc, char **argv)
 {
-    if (argc < 4) {
-        std::cout << ". Usage:    track <video-file> <output-file> <match-threshold>" << std::endl
-                  << ". Example:  track video.mp4 results.csv 0.7" << std::endl;
+    if (argc < 5) {
+        std::cout << ". Usage:    track <video-file> <output-file> <match-threshold> <dislpay-scale>" << std::endl
+                  << ". Example:  track video.mp4 results.csv 0.7 0.5" << std::endl;
         return 1;
     }
 
     std::string video_file = argv[1];
     std::string output_file = argv[2];
 
-    std::stringstream ss(argv[3]);
+    std::stringstream match_threshold_ss(argv[3]);
     float match_threshold;
-    ss >> match_threshold;
+    match_threshold_ss >> match_threshold;
+
+    std::stringstream display_scale_ss(argv[4]);
+    float display_scale;
+    display_scale_ss >> display_scale;
 
     std::cout << ". video-file      = \"" << video_file << "\"" << std::endl
               << ". output-file     = \"" << output_file << "\"" << std::endl
-              << ". match-threshold = " << std::fixed << match_threshold << std::endl;
+              << ". match-threshold = " << std::fixed << match_threshold << std::endl
+              << ". display-scale = " << std::fixed << display_scale << std::endl;
 
 //    cv::Ptr<cv::Tracker> tracker = cv::TrackerKCF::create();
 //    cv::Ptr<cv::Tracker> tracker = cv::TrackerMIL::create();
@@ -57,7 +62,7 @@ int main(int argc, char **argv)
     }
 
     cv::Rect2d roi;
-    cv::Mat frame_small, tmplt, patch_scaled;
+    cv::Mat frame_scaled, tmplt, patch_scaled;
     bool tracker_ok = false, prev_action_skip = true;
 
     std::cout << ". Press SPACE to select, ESC to exit, or any other key to fast-forward." << std::endl;
@@ -66,12 +71,16 @@ int main(int argc, char **argv)
 
     while (video.read(frame))
     {
-        cv::resize(frame, frame_small, cv::Size(frame.cols / 2, frame.rows / 2), 0, 0, cv::INTER_NEAREST);
+        const int disp_width = static_cast<int>(round(frame.cols * display_scale));
+        const int disp_height = static_cast<int>(round(frame.rows * display_scale));
+        const double real_display_scale = static_cast<double>(disp_width) / static_cast<double>(frame.cols);
+
+        cv::resize(frame, frame_scaled, cv::Size(disp_width, disp_height), 0, 0, cv::INTER_LINEAR);
 
         if (tracker_ok) {
             if (tracker->update(frame, roi) &&
-                roi.x >= 0 &&
-                roi.y >= 0 &&
+                roi.x >= 0.0 &&
+                roi.y >= 0.0 &&
                 roi.x + roi.width <= frame.cols &&
                 roi.y + roi.height <= frame.rows) {
 
@@ -84,23 +93,23 @@ int main(int argc, char **argv)
 
                 if (match >= match_threshold) {
                     // Good match
-                    cv::putText(frame_small, ss.str(), cv::Point(3, 23), cv::FONT_HERSHEY_SIMPLEX, 0.4, cv::Scalar(0, 255, 0), 1);
+                    cv::putText(frame_scaled, ss.str(), cv::Point(3, 23), cv::FONT_HERSHEY_SIMPLEX, 0.4, cv::Scalar(0, 255, 0), 1);
 
                     output << frame_cnt << ",1,"
                            << static_cast<double>(roi.x) + static_cast<double>(roi.width) * 0.5
                            << ","
                            << static_cast<double>(roi.y) + static_cast<double>(roi.height) * 0.5 << std::endl;
 
-                    roi.x = (roi.x + 1) / 2;
-                    roi.y = (roi.y + 1) / 2;
-                    roi.width = (roi.width + 1) / 2;
-                    roi.height = (roi.height + 1) / 2;
-                    cv::rectangle(frame_small, roi, cv::Scalar(0, 255, 0 ), 2, 1);
+                    roi.x = roi.x * real_display_scale;
+                    roi.y = roi.y * real_display_scale;
+                    roi.width = roi.width * real_display_scale;
+                    roi.height = roi.height * real_display_scale;
+                    cv::rectangle(frame_scaled, roi, cv::Scalar(0, 255, 0 ), 2, 1);
 
                     prev_action_skip = false;
                 } else {
                     // Bad match
-                    cv::putText(frame_small, ss.str(), cv::Point(3, 23), cv::FONT_HERSHEY_SIMPLEX, 0.4, cv::Scalar(0, 0, 255), 1);
+                    cv::putText(frame_scaled, ss.str(), cv::Point(3, 23), cv::FONT_HERSHEY_SIMPLEX, 0.4, cv::Scalar(0, 0, 255), 1);
 
                     tracker_ok = false;
                 }
@@ -113,8 +122,8 @@ int main(int argc, char **argv)
 
         std::stringstream ss;
         ss << frame_cnt;
-        cv::putText(frame_small, ss.str(), cv::Point(3, 11), cv::FONT_HERSHEY_SIMPLEX, 0.4, cv::Scalar(255, 255, 255), 1);
-        cv::imshow("Tracking", frame_small);
+        cv::putText(frame_scaled, ss.str(), cv::Point(3, 11), cv::FONT_HERSHEY_SIMPLEX, 0.4, cv::Scalar(255, 255, 255), 1);
+        cv::imshow("Tracking", frame_scaled);
 
         if (!tracker_ok) {
             if (!prev_action_skip) {
@@ -126,19 +135,16 @@ int main(int argc, char **argv)
                 break;
             } else if (k == ' ') {
                 // Re-select
-                roi = cv::selectROI("Tracking", frame_small, true, true);
+                roi = cv::selectROI("Tracking", frame_scaled, true, true);
 
-                roi.x *= 2;
-                roi.y *= 2;
-                roi.width *= 2;
-                roi.height *= 2;
+                roi.x /= real_display_scale;
+                roi.y /= real_display_scale;
+                roi.width /= real_display_scale;
+                roi.height /= real_display_scale;
 
                 cv::Mat(frame, roi).copyTo(tmplt);
 
-                output << frame_cnt << ",2,"
-                       << static_cast<double>(roi.x) + static_cast<double>(roi.width) * 0.5
-                       << ","
-                       << static_cast<double>(roi.y) + static_cast<double>(roi.height) * 0.5 << std::endl;
+                output << frame_cnt << ",2," << roi.x + roi.width * 0.5 << "," << roi.y + roi.height * 0.5 << std::endl;
 
                 tracker.release();
                 tracker = cv::TrackerCSRT::create();
