@@ -313,7 +313,7 @@ int main(int argc, char **argv)
 
                 if (tracker_type == 0) {
                     tracker.release();
-                    tracker = cv::Tracker::create("MIL");
+                    tracker = cv::TrackerCSRT::create();
                     tracker->init(frame, roi);
                 } else {
                     simple_tracker.SetTemplate(tmplt, tmplt.cols / 2, tmplt.rows / 2);
