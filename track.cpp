@@ -10,6 +10,7 @@
 
 
 void CalculateCost_RotPos2D(const double *params, int num_inputs, const void *inputs, double *fvec, int *info);
+void CalculateCost_RotPosScale2D(const double *params, int num_inputs, const void *inputs, double *fvec, int *info);
 
 float CompareToTemplate(const cv::Mat& patch, const cv::Mat& tmplt)
 {
@@ -31,7 +32,7 @@ public:
         RadiusY(rad_y),
         MatchThreshold(0.5f),
         MatchMetric(metric == 1 ? cv::TM_CCOEFF_NORMED : (metric == 2 ? cv::TM_SQDIFF_NORMED : (metric == 3 ? cv::TM_CCOEFF : (metric == 4 ? cv::TM_SQDIFF : cv::TM_CCOEFF_NORMED)))),
-        DoF((dof >= 2 && dof <= 3) ? dof : 2),
+        DoF((dof >= 2 && dof <= 4) ? dof : 2),
         Upscaling(upscaling >= 0 ? upscaling : 0)
     {
     }
@@ -48,14 +49,14 @@ public:
         y = PosY;
     }
 
-    void GetRotation(double& angle) const
+    double GetRotation() const
     {
-        angle = RotAngle;
+        return RotAngle;
     }
 
-    void GetScale(double& scale) const
+    double GetScale() const
     {
-        scale = Scale;
+        return Scale;
     }
 
     int GetUpscaling() const
@@ -108,7 +109,7 @@ public:
         }
 
         if (Upscaling > 0) {
-            cv::resize(Template, UpscaledTemplate, cv::Size(), Upscaling, Upscaling, cv::INTER_LINEAR);
+            cv::resize(Template, UpscaledTemplate, cv::Size(), Upscaling, Upscaling, cv::INTER_LANCZOS4);
         }
 
         RotAngle = 0.0;
@@ -144,7 +145,7 @@ public:
                            RadiusX * 2 + Template.cols,
                            RadiusY * 2 + Template.rows);
             cv::Point2f src[3];
-            double pt0x = -0.5 * (roi.width - 1), pt0y = -0.5 * (roi.height - 1);
+            double pt0x = -0.5 * (roi.width - 1) * Scale, pt0y = -0.5 * (roi.height - 1) * Scale;
             double pt1x = -pt0x, pt1y = pt0y;
             double pt2x = pt0x, pt2y = -pt0y;
             src[0] = cv::Point2d(PosX + pt0x * std::cos(RotAngle) - pt0y * std::sin(RotAngle), PosY + pt0x * std::sin(RotAngle) + pt0y * std::cos(RotAngle));
@@ -194,9 +195,10 @@ public:
             double tx = PosX, ty = PosY, tan = RotAngle, tsc = Scale;
 
             if (DoF == 3) Refine3DoF();
+            else if (DoF == 4) Refine4DoF();
 
             cv::Point2f src[3];
-            double pt0x = -0.5 * (Template.cols - 1), pt0y = -0.5 * (Template.rows - 1);
+            double pt0x = -0.5 * (Template.cols - 1) * Scale, pt0y = -0.5 * (Template.rows - 1) * Scale;
             double pt1x = -pt0x, pt1y = pt0y;
             double pt2x = pt0x, pt2y = -pt0y;
             src[0] = cv::Point2d(PosX + pt0x * std::cos(RotAngle) - pt0y * std::sin(RotAngle), PosY + pt0x * std::sin(RotAngle) + pt0y * std::cos(RotAngle));
@@ -252,7 +254,7 @@ protected:
         LM_ipvt = new int [dof];
 
         double epsilon = 1e-6;
-        int maxcall = 200;
+        int maxcall = 20;
 
         lm_control_struct control;
         control = lm_control_double;
@@ -300,6 +302,93 @@ protected:
         PosX = params[0];
         PosY = params[1];
         RotAngle = params[2] * 10.0;
+
+        delete [] LM_fvec;
+        delete [] LM_diag;
+        delete [] LM_qtf;
+        delete [] LM_fjac;
+        delete [] LM_wa1;
+        delete [] LM_wa2;
+        delete [] LM_wa3;
+        delete [] LM_wa4;
+        delete [] LM_ipvt;
+        delete [] params;
+
+        return true;
+    }
+
+    bool Refine4DoF()
+    {
+        const int dof = 4;
+        const int m = 5;
+
+        double* params = new double[dof];
+
+        params[0] = PosX;
+        params[1] = PosY;
+        params[2] = RotAngle * 0.1;
+        params[3] = Scale;
+
+        LM_fvec = new double[m];
+        LM_diag = new double[dof];
+        LM_qtf  = new double[dof];
+        LM_fjac = new double[dof * m];
+        LM_wa1  = new double[dof];
+        LM_wa2  = new double[dof];
+        LM_wa3  = new double[dof];
+        LM_wa4  = new double[m];
+        LM_ipvt = new int [dof];
+
+        double epsilon = 1e-6;
+        int maxcall = 20;
+
+        lm_control_struct control;
+        control = lm_control_double;
+        control.maxcall = maxcall;
+        control.ftol = 1e-10;
+        control.xtol = 1e-10;
+        control.gtol = 1e-10;
+        control.epsilon = epsilon;
+//        control.stepbound = 100.0;
+        control.printflags = 0;
+
+        lm_status_struct status;
+        status.info = 1;
+
+        if (!control.scale_diag) {
+            for (int j = 0; j < dof; j ++) LM_diag[j] = 1;
+        }
+
+        lm_lmdif(m,
+                 dof,
+                 params,
+                 LM_fvec,
+                 control.ftol,
+                 control.xtol,
+                 control.gtol,
+                 control.maxcall * (dof + 1),
+                 control.epsilon,
+                 LM_diag,
+                 (control.scale_diag ? 1 : 2),
+                 control.stepbound,
+                 &(status.info),
+                 &(status.nfev),
+                 LM_fjac,
+                 LM_ipvt,
+                 LM_qtf,
+                 LM_wa1,
+                 LM_wa2,
+                 LM_wa3,
+                 LM_wa4,
+                 CalculateCost_RotPosScale2D,
+                 lm_printout_std,
+                 control.printflags,
+                 this);
+
+        PosX = params[0];
+        PosY = params[1];
+        RotAngle = params[2] * 10.0;
+        Scale = params[3];
 
         delete [] LM_fvec;
         delete [] LM_diag;
@@ -391,6 +480,52 @@ void CalculateCost_RotPos2D(const double *params, int num_inputs, const void *in
     for (int i = 1; i < num_inputs; i ++) fvec[i] = fvec[0];
 }
 
+void CalculateCost_RotPosScale2D(const double *params, int num_inputs, const void *inputs, double *fvec, int *info)
+{
+    TemplateTracker* parent = const_cast<TemplateTracker*>(reinterpret_cast<const TemplateTracker*>(inputs));
+    if (!parent) return;
+
+    const double upscaling = static_cast<double>(parent->GetUpscaling());
+    const cv::Mat& image = parent->GetGrayImage();
+    const cv::Mat& tmplt = parent->GetUpscaledTemplate();
+    cv::Mat& warped_image = parent->GetLMWarpedImage();
+
+    double pos_x = params[0];
+    double pos_y = params[1];
+    double rot_angle = params[2] * 10.0;
+    double scale = params[3];
+
+    cv::Point2f src[3];
+    double pt0x = -0.5 * (tmplt.cols / upscaling - 1) * scale, pt0y = -0.5 * (tmplt.rows / upscaling - 1) * scale;
+    double pt1x = -pt0x, pt1y = pt0y;
+    double pt2x = pt0x, pt2y = -pt0y;
+    src[0] = cv::Point2d(pos_x + pt0x * std::cos(rot_angle) - pt0y * std::sin(rot_angle), pos_y + pt0x * std::sin(rot_angle) + pt0y * std::cos(rot_angle));
+    src[1] = cv::Point2d(pos_x + pt1x * std::cos(rot_angle) - pt1y * std::sin(rot_angle), pos_y + pt1x * std::sin(rot_angle) + pt1y * std::cos(rot_angle));
+    src[2] = cv::Point2d(pos_x + pt2x * std::cos(rot_angle) - pt2y * std::sin(rot_angle), pos_y + pt2x * std::sin(rot_angle) + pt2y * std::cos(rot_angle));
+    cv::Point2f dst[3];
+    dst[0] = cv::Point2d(0.0, 0.0);
+    dst[1] = cv::Point2d(tmplt.cols - 1.0, 0.0);
+    dst[2] = cv::Point2d(0.0, tmplt.rows - 1.0);
+    cv::Mat warp_mat = cv::getAffineTransform(src, dst);
+    cv::warpAffine(image, warped_image, warp_mat, tmplt.size(), cv::INTER_LINEAR);
+
+    cv::Mat result(1, 1, CV_32FC1);
+    cv::matchTemplate(tmplt, warped_image, result, parent->GetMatchMetric());
+
+//    cv::namedWindow("tmplt");
+//    cv::imshow("tmplt", tmplt);
+//    cv::namedWindow("warped_image");
+//    cv::imshow("warped_image", warped_image);
+//    cv::Mat diff;
+//    cv::absdiff(tmplt, warped_image, diff);
+//    cv::namedWindow("diff");
+//    cv::imshow("diff", diff);
+//    cv::waitKey(0);
+
+    fvec[0] = 1.0 - static_cast<double>(result.at<float>(0));
+    for (int i = 1; i < num_inputs; i ++) fvec[i] = fvec[0];
+}
+
 int main(int argc, char **argv)
 {
     if (argc < 5) {
@@ -428,8 +563,7 @@ int main(int argc, char **argv)
     cv::Ptr<cv::Tracker> tracker = cv::TrackerCSRT::create();
 //    cv::Ptr<cv::Tracker> tracker = cv::Tracker::create("MIL");
 
-    TemplateTracker simple_tracker(20, 20, 3, 3, 1);
-    simple_tracker.SetMatchThreshold(match_threshold);
+    TemplateTracker* simple_tracker = nullptr;
 
     cv::VideoCapture video(video_file);
 
@@ -489,7 +623,7 @@ int main(int argc, char **argv)
                                << static_cast<double>(roi.x) + static_cast<double>(roi.width) * 0.5
                                << ","
                                << static_cast<double>(roi.y) + static_cast<double>(roi.height) * 0.5
-                               << ",0" << std::endl;
+                               << ",0,1" << std::endl;
 
                         roi.x = roi.x * real_display_scale;
                         roi.y = roi.y * real_display_scale;
@@ -507,13 +641,14 @@ int main(int argc, char **argv)
                 } else {
                     // Tracker failed
                     tracker_ok = false;
-                    output << frame_cnt << ",0,0,0,0" << std::endl;
+                    output << frame_cnt << ",0,0,0,0,0" << std::endl;
                 }
             } else {
-                double score = simple_tracker.Track(frame);
-                double x, y, angle;
-                simple_tracker.GetPosition(x, y);
-                simple_tracker.GetRotation(angle);
+                double score = simple_tracker->Track(frame);
+                double x, y;
+                simple_tracker->GetPosition(x, y);
+                double angle = simple_tracker->GetRotation();
+                double scale = simple_tracker->GetScale();
                 if (score >= -1.0 &&
                     x >= 0.0 && y >= 0.0 &&
                     x <= static_cast<double>(frame.cols - 1) && y <= static_cast<double>(frame.rows - 1)) {
@@ -525,10 +660,10 @@ int main(int argc, char **argv)
                         // Good match
                         cv::putText(frame_scaled, ss.str(), cv::Point(3, 23), cv::FONT_HERSHEY_SIMPLEX, 0.4, cv::Scalar(0, 255, 0), 1);
 
-                        output << frame_cnt << ",1," << std::fixed << std::setprecision(2) << x << "," << y << "," << angle * 180.0 / M_PI << std::endl;
+                        output << frame_cnt << ",1," << std::fixed << std::setprecision(2) << x << "," << y << "," << angle * 180.0 / M_PI << "," << scale << std::endl;
 
                         cv::Point2f src[4];
-                        double pt0x = -0.5 * (tmplt.cols - 1), pt0y = -0.5 * (tmplt.rows - 1);
+                        double pt0x = -0.5 * (tmplt.cols - 1) * scale, pt0y = -0.5 * (tmplt.rows - 1) * scale;
                         double pt1x = -pt0x, pt1y = pt0y;
                         double pt2x = pt1x, pt2y = -pt0y;
                         double pt3x = pt0x, pt3y = pt2y;
@@ -544,19 +679,15 @@ int main(int argc, char **argv)
 
                         prev_action_skip = false;
                     } else {
-//                        std::cout << ". failure: score=" << score << "; pos=(" << x << ", " << y << "); angle=" << angle * 180.0 / M_PI << std::endl;
-
                         // Bad match
                         cv::putText(frame_scaled, ss.str(), cv::Point(3, 23), cv::FONT_HERSHEY_SIMPLEX, 0.4, cv::Scalar(0, 0, 255), 1);
 
                         tracker_ok = false;
                     }
                 } else {
-//                    std::cout << ". failure: score=" << score << "; pos=(" << x << ", " << y << "); angle=" << angle * 180.0 / M_PI << std::endl;
-
                     // Tracker failed
                     tracker_ok = false;
-                    output << frame_cnt << ",0,0,0,0" << std::endl;
+                    output << frame_cnt << ",0,0,0,0,0" << std::endl;
                 }
             }
         }
@@ -588,7 +719,7 @@ int main(int argc, char **argv)
 
                 cv::Mat(frame, roi).copyTo(tmplt);
 
-                output << frame_cnt << ",2," << roi.x + roi.width * 0.5 << "," << roi.y + roi.height * 0.5 << ",0" << std::endl;
+                output << frame_cnt << ",2," << roi.x + roi.width * 0.5 << "," << roi.y + roi.height * 0.5 << ",0,1" << std::endl;
 
                 if (tracker_type == 0) {
                     tracker.release();
@@ -596,8 +727,12 @@ int main(int argc, char **argv)
 //                    tracker = cv::Tracker::create("MIL");
                     tracker->init(frame, roi);
                 } else {
-                    simple_tracker.SetTemplate(tmplt);
-                    simple_tracker.SetPosition(static_cast<int>(roi.x + roi.width * 0.5), static_cast<int>(roi.y + roi.height * 0.5));
+                    delete simple_tracker;
+                    int upscaling = 5 - std::min(4, std::max(0, static_cast<int>(std::sqrt(roi.width * roi.height)) / 15));
+                    simple_tracker = new TemplateTracker(30, 30, 4, upscaling, 1);
+                    simple_tracker->SetMatchThreshold(match_threshold);
+                    simple_tracker->SetTemplate(tmplt);
+                    simple_tracker->SetPosition(static_cast<int>(roi.x + roi.width * 0.5), static_cast<int>(roi.y + roi.height * 0.5));
                 }
 
                 tracker_ok = true;
@@ -606,7 +741,7 @@ int main(int argc, char **argv)
                 std::cout << ". Press ESC to exit" << std::endl;
             } else {
                 // Skip frame
-                output << frame_cnt << ",0,0,0,0" << std::endl;
+                output << frame_cnt << ",0,0,0,0,0" << std::endl;
                 prev_action_skip = true;
             }
 
@@ -622,6 +757,8 @@ int main(int argc, char **argv)
 
         frame_cnt ++;
     }
+
+    delete simple_tracker;
 
     std::cout << ". Finished" << std::endl;
     return 0;
