@@ -241,7 +241,7 @@ protected:
 
         params[0] = PosX;
         params[1] = PosY;
-        params[2] = RotAngle * 0.1;
+        params[2] = RotAngle * 0.01;
 
         LM_fvec = new double[m];
         LM_diag = new double[dof];
@@ -253,8 +253,8 @@ protected:
         LM_wa4  = new double[m];
         LM_ipvt = new int [dof];
 
-        double epsilon = 1e-6;
-        int maxcall = 20;
+        double epsilon = 1e-8;
+        int maxcall = 100;
 
         lm_control_struct control;
         control = lm_control_double;
@@ -301,7 +301,7 @@ protected:
 
         PosX = params[0];
         PosY = params[1];
-        RotAngle = params[2] * 10.0;
+        RotAngle = params[2] * 100.0;
 
         delete [] LM_fvec;
         delete [] LM_diag;
@@ -326,8 +326,8 @@ protected:
 
         params[0] = PosX;
         params[1] = PosY;
-        params[2] = RotAngle * 0.1;
-        params[3] = Scale;
+        params[2] = RotAngle * 0.01;
+        params[3] = Scale * 0.01;
 
         LM_fvec = new double[m];
         LM_diag = new double[dof];
@@ -339,8 +339,8 @@ protected:
         LM_wa4  = new double[m];
         LM_ipvt = new int [dof];
 
-        double epsilon = 1e-6;
-        int maxcall = 20;
+        double epsilon = 1e-8;
+        int maxcall = 100;
 
         lm_control_struct control;
         control = lm_control_double;
@@ -387,8 +387,8 @@ protected:
 
         PosX = params[0];
         PosY = params[1];
-        RotAngle = params[2] * 10.0;
-        Scale = params[3];
+        RotAngle = params[2] * 100.0;
+        Scale = params[3] * 100.0;
 
         delete [] LM_fvec;
         delete [] LM_diag;
@@ -447,7 +447,7 @@ void CalculateCost_RotPos2D(const double *params, int num_inputs, const void *in
 
     double pos_x = params[0];
     double pos_y = params[1];
-    double rot_angle = params[2] * 10.0;
+    double rot_angle = params[2] * 100.0;
 
     cv::Point2f src[3];
     double pt0x = -0.5 * (tmplt.cols / upscaling - 1), pt0y = -0.5 * (tmplt.rows / upscaling - 1);
@@ -492,8 +492,8 @@ void CalculateCost_RotPosScale2D(const double *params, int num_inputs, const voi
 
     double pos_x = params[0];
     double pos_y = params[1];
-    double rot_angle = params[2] * 10.0;
-    double scale = params[3];
+    double rot_angle = params[2] * 100.0;
+    double scale = params[3] * 100.0;
 
     cv::Point2f src[3];
     double pt0x = -0.5 * (tmplt.cols / upscaling - 1) * scale, pt0y = -0.5 * (tmplt.rows / upscaling - 1) * scale;
@@ -529,7 +529,7 @@ void CalculateCost_RotPosScale2D(const double *params, int num_inputs, const voi
 int main(int argc, char **argv)
 {
     if (argc < 5) {
-        std::cout << ". Usage:    track <video-file> <output-file> <match-threshold> <display-scale>" << std::endl
+        std::cout << ". Usage:    track <video-file> <output-file> <match-threshold> <display-scale> <degrees-of-freedom>" << std::endl
                   << ". Example:  track video.mp4 results.csv 0.7 0.5" << std::endl;
         return 1;
     }
@@ -545,18 +545,19 @@ int main(int argc, char **argv)
     float display_scale;
     display_scale_ss >> display_scale;
 
-    int tracker_type = 0;
-    if (argc >= 6) {
-        std::stringstream tracker_type_ss(argv[5]);
-        tracker_type_ss >> tracker_type;
-        if (tracker_type <= 0) tracker_type = 0;
-        else tracker_type = 1;
-    }
+    std::cout << ". video-file         = \"" << video_file << "\"" << std::endl
+              << ". output-file        = \"" << output_file << "\"" << std::endl
+              << ". match-threshold    = " << std::fixed << match_threshold << std::endl
+              << ". display-scale      = " << std::fixed << display_scale << std::endl;
 
-    std::cout << ". video-file      = \"" << video_file << "\"" << std::endl
-              << ". output-file     = \"" << output_file << "\"" << std::endl
-              << ". match-threshold = " << std::fixed << match_threshold << std::endl
-              << ". display-scale = " << std::fixed << display_scale << std::endl;
+    int dof = 0;
+    if (argc >= 6) {
+        std::stringstream dof_ss(argv[5]);
+        dof_ss >> dof;
+        if (dof < 2) dof = 0;
+        else dof = std::min(dof, 4);
+        std::cout << ". degrees-of-freedom = " << dof << std::endl;
+    }
 
 //    cv::Ptr<cv::Tracker> tracker = cv::TrackerKCF::create();
 //    cv::Ptr<cv::Tracker> tracker = cv::TrackerMIL::create();
@@ -601,7 +602,7 @@ int main(int argc, char **argv)
         cv::resize(frame, frame_scaled, cv::Size(disp_width, disp_height), 0, 0, cv::INTER_LINEAR);
 
         if (tracker_ok) {
-            if (tracker_type == 0) {
+            if (dof == 0) {
                 if (tracker->update(frame, roi) &&
                     roi.x >= 0.0 &&
                     roi.y >= 0.0 &&
@@ -721,7 +722,7 @@ int main(int argc, char **argv)
 
                 output << frame_cnt << ",2," << roi.x + roi.width * 0.5 << "," << roi.y + roi.height * 0.5 << ",0,1" << std::endl;
 
-                if (tracker_type == 0) {
+                if (dof == 0) {
                     tracker.release();
                     tracker = cv::TrackerCSRT::create();
 //                    tracker = cv::Tracker::create("MIL");
@@ -729,7 +730,7 @@ int main(int argc, char **argv)
                 } else {
                     delete simple_tracker;
                     int upscaling = 5 - std::min(4, std::max(0, static_cast<int>(std::sqrt(roi.width * roi.height)) / 15));
-                    simple_tracker = new TemplateTracker(30, 30, 4, upscaling, 1);
+                    simple_tracker = new TemplateTracker(30, 30, static_cast<unsigned int>(dof), upscaling, 1);
                     simple_tracker->SetMatchThreshold(match_threshold);
                     simple_tracker->SetTemplate(tmplt);
                     simple_tracker->SetPosition(static_cast<int>(roi.x + roi.width * 0.5), static_cast<int>(roi.y + roi.height * 0.5));
