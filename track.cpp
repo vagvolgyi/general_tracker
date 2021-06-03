@@ -33,7 +33,8 @@ public:
         MatchThreshold(0.5f),
         MatchMetric(metric == 1 ? cv::TM_CCOEFF_NORMED : (metric == 2 ? cv::TM_SQDIFF_NORMED : (metric == 3 ? cv::TM_CCOEFF : (metric == 4 ? cv::TM_SQDIFF : cv::TM_CCOEFF_NORMED)))),
         DoF((dof >= 2 && dof <= 4) ? dof : 2),
-        Upscaling(upscaling >= 0 ? upscaling : 0)
+        Upscaling(upscaling >= 0 ? upscaling : 0),
+        Interpolation(cv::INTER_LINEAR) // cv::INTER_LINEAR, cv::INTER_CUBIC, or cv::INTER_LANCZOS4
     {
     }
 
@@ -62,6 +63,11 @@ public:
     int GetUpscaling() const
     {
         return Upscaling;
+    }
+
+    int GetInterpolation() const
+    {
+        return Interpolation;
     }
 
     int GetMatchMetric() const
@@ -118,6 +124,34 @@ public:
         return true;
     }
 
+    void FilterInitialize(double proc_cov, double meas_cov, double x, double y)
+    {
+        Filter.init(4, 2, 0, CV_64F);
+        cv::setIdentity(Filter.transitionMatrix);
+        Filter.transitionMatrix.at<double>(0, 2) = 1;
+        Filter.transitionMatrix.at<double>(1, 3) = 1;
+        Filter.statePre.at<double>(0) = x;
+        Filter.statePre.at<double>(1) = y;
+        Filter.statePre.at<double>(2) = 0;
+        Filter.statePre.at<double>(3) = 0;
+        cv::setIdentity(Filter.measurementMatrix);
+        cv::setIdentity(Filter.processNoiseCov, cv::Scalar::all(proc_cov));
+        cv::setIdentity(Filter.measurementNoiseCov, cv::Scalar::all(meas_cov));
+        cv::setIdentity(Filter.errorCovPost, cv::Scalar::all(100));
+        FilterUpdateAndPredict(x, y);
+    }
+
+    void FilterUpdateAndPredict(double& x, double& y)
+    {
+        cv::Mat prediction = Filter.predict();
+        cv::Mat measurement(2, 1, CV_64F);
+        measurement.at<double>(0) = x;
+        measurement.at<double>(1) = y;
+        cv::Mat estimated = Filter.correct(measurement);
+        x = estimated.at<double>(0);
+        y = estimated.at<double>(1);
+    }
+
     double Track(const cv::Mat& image)
     {
         if (image.empty()) {
@@ -156,7 +190,7 @@ public:
             dst[1] = cv::Point2d(roi.width - 1.0, 0.0);
             dst[2] = cv::Point2d(0.0, roi.height - 1.0);
             cv::Mat warp_mat = cv::getAffineTransform(src, dst);
-            cv::warpAffine(GrayImage, WarpedGrayImage, warp_mat, roi.size(), cv::INTER_LINEAR);
+            cv::warpAffine(GrayImage, WarpedGrayImage, warp_mat, roi.size(), Interpolation);
 
             image_roi = WarpedGrayImage;
         } else {
@@ -209,7 +243,7 @@ public:
             dst[1] = cv::Point2d(Template.cols - 1.0, 0.0);
             dst[2] = cv::Point2d(0.0, Template.rows - 1.0);
             cv::Mat warp_mat = cv::getAffineTransform(src, dst);
-            cv::warpAffine(GrayImage, WarpedGrayImage, warp_mat, Template.size(), cv::INTER_LINEAR);
+            cv::warpAffine(GrayImage, WarpedGrayImage, warp_mat, Template.size(), Interpolation);
 
             cv::Mat t_result(1, 1, CV_32FC1);
             cv::matchTemplate(Template, WarpedGrayImage, t_result, MatchMetric);
@@ -241,7 +275,7 @@ protected:
 
         params[0] = PosX;
         params[1] = PosY;
-        params[2] = RotAngle * 0.01;
+        params[2] = RotAngle * 0.001;
 
         LM_fvec = new double[m];
         LM_diag = new double[dof];
@@ -259,9 +293,9 @@ protected:
         lm_control_struct control;
         control = lm_control_double;
         control.maxcall = maxcall;
-        control.ftol = 1e-10;
-        control.xtol = 1e-10;
-        control.gtol = 1e-10;
+        control.ftol = 1e-20;
+        control.xtol = 1e-20;
+        control.gtol = 1e-20;
         control.epsilon = epsilon;
 //        control.stepbound = 100.0;
         control.printflags = 0;
@@ -301,7 +335,7 @@ protected:
 
         PosX = params[0];
         PosY = params[1];
-        RotAngle = params[2] * 100.0;
+        RotAngle = params[2] * 1000.0;
 
         delete [] LM_fvec;
         delete [] LM_diag;
@@ -326,8 +360,8 @@ protected:
 
         params[0] = PosX;
         params[1] = PosY;
-        params[2] = RotAngle * 0.01;
-        params[3] = Scale * 0.01;
+        params[2] = RotAngle * 0.001;
+        params[3] = Scale * 0.1;
 
         LM_fvec = new double[m];
         LM_diag = new double[dof];
@@ -345,9 +379,9 @@ protected:
         lm_control_struct control;
         control = lm_control_double;
         control.maxcall = maxcall;
-        control.ftol = 1e-10;
-        control.xtol = 1e-10;
-        control.gtol = 1e-10;
+        control.ftol = 1e-20;
+        control.xtol = 1e-20;
+        control.gtol = 1e-20;
         control.epsilon = epsilon;
 //        control.stepbound = 100.0;
         control.printflags = 0;
@@ -387,8 +421,8 @@ protected:
 
         PosX = params[0];
         PosY = params[1];
-        RotAngle = params[2] * 100.0;
-        Scale = params[3] * 100.0;
+        RotAngle = params[2] * 1000.0;
+        Scale = params[3] * 10.0;
 
         delete [] LM_fvec;
         delete [] LM_diag;
@@ -421,6 +455,9 @@ protected:
     const unsigned int DoF;
     const int Upscaling;
     cv::Mat UpscaledTemplate;
+    int Interpolation;
+
+    cv::KalmanFilter Filter;
 
     // LM solver buffers
     cv::Mat LM_WarpedImage;
@@ -441,13 +478,14 @@ void CalculateCost_RotPos2D(const double *params, int num_inputs, const void *in
     if (!parent) return;
 
     const double upscaling = static_cast<double>(parent->GetUpscaling());
+    const int interpolation = parent->GetInterpolation();
     const cv::Mat& image = parent->GetGrayImage();
     const cv::Mat& tmplt = parent->GetUpscaledTemplate();
     cv::Mat& warped_image = parent->GetLMWarpedImage();
 
     double pos_x = params[0];
     double pos_y = params[1];
-    double rot_angle = params[2] * 100.0;
+    double rot_angle = params[2] * 1000.0;
 
     cv::Point2f src[3];
     double pt0x = -0.5 * (tmplt.cols / upscaling - 1), pt0y = -0.5 * (tmplt.rows / upscaling - 1);
@@ -461,7 +499,7 @@ void CalculateCost_RotPos2D(const double *params, int num_inputs, const void *in
     dst[1] = cv::Point2d(tmplt.cols - 1.0, 0.0);
     dst[2] = cv::Point2d(0.0, tmplt.rows - 1.0);
     cv::Mat warp_mat = cv::getAffineTransform(src, dst);
-    cv::warpAffine(image, warped_image, warp_mat, tmplt.size(), cv::INTER_LINEAR);
+    cv::warpAffine(image, warped_image, warp_mat, tmplt.size(), interpolation);
 
     cv::Mat result(1, 1, CV_32FC1);
     cv::matchTemplate(tmplt, warped_image, result, parent->GetMatchMetric());
@@ -486,14 +524,15 @@ void CalculateCost_RotPosScale2D(const double *params, int num_inputs, const voi
     if (!parent) return;
 
     const double upscaling = static_cast<double>(parent->GetUpscaling());
+    const int interpolation = parent->GetInterpolation();
     const cv::Mat& image = parent->GetGrayImage();
     const cv::Mat& tmplt = parent->GetUpscaledTemplate();
     cv::Mat& warped_image = parent->GetLMWarpedImage();
 
     double pos_x = params[0];
     double pos_y = params[1];
-    double rot_angle = params[2] * 100.0;
-    double scale = params[3] * 100.0;
+    double rot_angle = params[2] * 1000.0;
+    double scale = params[3] * 10.0;
 
     cv::Point2f src[3];
     double pt0x = -0.5 * (tmplt.cols / upscaling - 1) * scale, pt0y = -0.5 * (tmplt.rows / upscaling - 1) * scale;
@@ -507,7 +546,7 @@ void CalculateCost_RotPosScale2D(const double *params, int num_inputs, const voi
     dst[1] = cv::Point2d(tmplt.cols - 1.0, 0.0);
     dst[2] = cv::Point2d(0.0, tmplt.rows - 1.0);
     cv::Mat warp_mat = cv::getAffineTransform(src, dst);
-    cv::warpAffine(image, warped_image, warp_mat, tmplt.size(), cv::INTER_LINEAR);
+    cv::warpAffine(image, warped_image, warp_mat, tmplt.size(), interpolation);
 
     cv::Mat result(1, 1, CV_32FC1);
     cv::matchTemplate(tmplt, warped_image, result, parent->GetMatchMetric());
@@ -529,8 +568,9 @@ void CalculateCost_RotPosScale2D(const double *params, int num_inputs, const voi
 int main(int argc, char **argv)
 {
     if (argc < 5) {
-        std::cout << ". Usage:    track <video-file> <output-file> <match-threshold> <display-scale> <degrees-of-freedom>" << std::endl
-                  << ". Example:  track video.mp4 results.csv 0.7 0.5" << std::endl;
+        std::cout << ". Usage:      track <video-file> <output-file> <match-threshold> <display-scale> [<degrees-of-freedom> [<kalman-filter-proc-cov> <kalman-filter-meas-cov>]]" << std::endl
+                  << ". Example 1:  track video.mp4 results.csv 0.7 0.5" << std::endl
+                  << ". Example 2:  track video.mp4 results.csv 0.6 1 3 0.001 0.025" << std::endl;
         return 1;
     }
 
@@ -545,18 +585,33 @@ int main(int argc, char **argv)
     float display_scale;
     display_scale_ss >> display_scale;
 
-    std::cout << ". video-file         = \"" << video_file << "\"" << std::endl
-              << ". output-file        = \"" << output_file << "\"" << std::endl
-              << ". match-threshold    = " << std::fixed << match_threshold << std::endl
-              << ". display-scale      = " << std::fixed << display_scale << std::endl;
+    std::cout << ". video-file             = \"" << video_file << "\"" << std::endl
+              << ". output-file            = \"" << output_file << "\"" << std::endl
+              << ". match-threshold        = " << std::fixed << match_threshold << std::endl
+              << ". display-scale          = " << std::fixed << display_scale << std::endl;
 
     int dof = 0;
+    double proc_cov = 0.0, meas_cov = 0.0;
     if (argc >= 6) {
         std::stringstream dof_ss(argv[5]);
         dof_ss >> dof;
         if (dof < 2) dof = 0;
         else dof = std::min(dof, 4);
-        std::cout << ". degrees-of-freedom = " << dof << std::endl;
+        std::cout << ". degrees-of-freedom     = " << dof << std::endl;
+
+        if (argc >= 8) {
+            std::stringstream proc_cov_ss(argv[6]);
+            proc_cov_ss >> proc_cov;
+            if (proc_cov < 0.0) proc_cov = 0.0;
+            std::stringstream meas_cov_ss(argv[7]);
+            meas_cov_ss >> meas_cov;
+            if (meas_cov < 0.0) meas_cov = 0.0;
+
+            if (proc_cov > 0.0 && meas_cov > 0.0) {
+                std::cout << ". kalman-filter-proc-cov = " << std::fixed << proc_cov << std::endl;
+                std::cout << ". kalman-filter-meas-cov = " << std::fixed << meas_cov << std::endl;
+            }
+        }
     }
 
 //    cv::Ptr<cv::Tracker> tracker = cv::TrackerKCF::create();
@@ -659,6 +714,11 @@ int main(int argc, char **argv)
 
                     if (score >= match_threshold) {
                         // Good match
+                        if (proc_cov > 0.0 && meas_cov > 0.0) {
+                            simple_tracker->FilterUpdateAndPredict(x, y);
+                            simple_tracker->SetPosition(x, y);
+                        }
+
                         cv::putText(frame_scaled, ss.str(), cv::Point(3, 23), cv::FONT_HERSHEY_SIMPLEX, 0.4, cv::Scalar(0, 255, 0), 1);
 
                         output << frame_cnt << ",1," << std::fixed << std::setprecision(2) << x << "," << y << "," << angle * 180.0 / M_PI << "," << scale << std::endl;
@@ -733,7 +793,12 @@ int main(int argc, char **argv)
                     simple_tracker = new TemplateTracker(30, 30, static_cast<unsigned int>(dof), upscaling, 1);
                     simple_tracker->SetMatchThreshold(match_threshold);
                     simple_tracker->SetTemplate(tmplt);
-                    simple_tracker->SetPosition(static_cast<int>(roi.x + roi.width * 0.5), static_cast<int>(roi.y + roi.height * 0.5));
+                    double x = roi.x + roi.width * 0.5;
+                    double y = roi.y + roi.height * 0.5;
+                    simple_tracker->SetPosition(static_cast<int>(x), static_cast<int>(y));
+                    if (proc_cov > 0.0 && meas_cov > 0.0) {
+                        simple_tracker->FilterInitialize(proc_cov, meas_cov, x, y);
+                    }
                 }
 
                 tracker_ok = true;
