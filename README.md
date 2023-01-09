@@ -9,7 +9,7 @@ Frames may be skipped when the object is lost by the tracker or is not visible.
 
 Output is generated in CSV format:
 
-    <frame-num>,<status>,<x-coordinate>,<y-coordinate>
+    <frame-num>,<status>,<x-coordinate>,<y-coordinate>[,<angle-degrees>,<scale>]
 
     # <status> values:
     #     0 - not tracking
@@ -26,14 +26,19 @@ Requires OpenCV 3.4.1+.
 Command line arguments:
 -----------------------
 
-    track <video-file> <output-file> <match-threshold>
+    track <video-file> <output-file> <match-threshold> <display-scale> [<degrees-of-freedom> [<kalman-filter-proc-cov> <kalman-filter-meas-cov>]]
 
     <match-threshold> range: (-1.0, 1.0)
+    <degrees-of-freedom> valid values: 2, 3, 4
+        2 - 2D position
+        3 - 2D position and orientation
+        4 - 2D position, orientation and scale
 
-Example:
+Examples:
 -------------------------------------------------
 
-    track video.mp4 results.csv 0.7
+    track video.mp4 results.csv 0.7 0.5
+    track video.mp4 results.csv 0.6 1 3 0.001 0.025
 
 Compilation on Linux and Mac:
 -----------------------
